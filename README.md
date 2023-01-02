@@ -1,4 +1,4 @@
-# sympast
+# symple
 
 Currently, just a simple solver for arithmetic expressions of a single variable.
 
