@@ -2,7 +2,7 @@
 
 Currently, just a simple solver for arithmetic expressions of a single variable.
 
-Maybe I'll add more. Maybe I won't.
+Maybe I'll add more. Maybe I won't. ¯\\\_(ツ)\_/¯
 
 ```py
 from symple import Var, solve
