@@ -1,4 +1,7 @@
-__all__ = "Expr", "UnOp", "BinOp", "Equation", "Var"
+"""
+Expressions and relations defined here.
+"""
+__all__ = "Expr", "UnOp", "BinOp", "Var", "Relation"
 
 from dataclasses import dataclass
 from textwrap import dedent
@@ -8,11 +11,18 @@ _BINOPS_SYMBOLS = {
     "mod": "%", "pow": "**", "lshift": "<<", "rshift": ">>", "and": "&", "xor": "^", "or": "|",
 }
 _UNOPS_SYMBOLS = {"neg": "-", "pos": "+", "invert": "~"}
-_EQUATION_SYMBOLS = {"lt": "<", "le": "<=", "eq": "==", "ne": "!=", "gt": ">", "ge": ">="}
+_RELATION_SYMBOLS = {"lt": "<", "le": "<=", "eq": "==", "ne": "!=", "gt": ">", "ge": ">="}
 
 
 @dataclass(frozen=True, slots=True)
 class Expr:
+    """
+    Abstract base for expressions.
+    """
+    def __init__(self):
+        raise NotImplementedError("Only subclasses of Expr should be instantiated.")
+
+    # Dynamically generate all operators and relations:
     for name, symbol in _BINOPS_SYMBOLS.items():
         exec(dedent(
             f"""
@@ -20,20 +30,30 @@ class Expr:
                 return BinOp("{symbol}", self, other)
             def __r{name}__(self, other):
                 return BinOp("{symbol}", other, self)
+
+            __{name}__.__doc__ = __r{name}__.__doc__ = '''
+            Apply '{symbol}' to an expression.
+            '''
             """
         ))
     for name, symbol in _UNOPS_SYMBOLS.items():
         exec(dedent(
             f"""
             def __{name}__(self):
+                '''
+                Apply '{symbol}' to an expression.
+                '''
                 return UnOp("{symbol}", self)
             """
         ))
-    for name, symbol in _EQUATION_SYMBOLS.items():
+    for name, symbol in _RELATION_SYMBOLS.items():
         exec(dedent(
             f"""
             def __{name}__(self, other):
-                return Equation("{symbol}", self, other)
+                '''
+                Return the relation `self {symbol} other`.
+                '''
+                return Relation("{symbol}", self, other)
             """
         ))
     del name, symbol
@@ -41,6 +61,9 @@ class Expr:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class UnOp(Expr):
+    """
+    An unary operation.
+    """
     symbol: str
     expr: Expr
 
@@ -51,6 +74,9 @@ class UnOp(Expr):
 
 @dataclass(frozen=True, slots=True, eq=False)
 class BinOp(Expr):
+    """
+    A binary operation.
+    """
     symbol: str
     lhs: Expr
     rhs: Expr
@@ -61,45 +87,64 @@ class BinOp(Expr):
         return f"{lhs} {self.symbol} {rhs}"
 
 
-@dataclass(frozen=True, slots=True)
-class Equation:  # NOT an expression
-    symbol: str
-    lhs: Expr
-    rhs: Expr
-
-    for name in _BINOPS_SYMBOLS:
-        exec(dedent(
-            f"""
-            def __{name}__(self, other):
-                return type(self)(
-                    self.symbol,
-                    self.lhs.__{name}__(other),
-                    self.rhs.__{name}__(other),
-                )
-            def __r{name}__(self, other):
-                return type(self)(
-                    self.symbol,
-                    self.lhs.__r{name}__(other),
-                    self.rhs.__r{name}__(other),
-                )
-            """
-        ))
-    for name in _UNOPS_SYMBOLS:
-        exec(dedent(
-            f"""
-            def __{name}__(self):
-                return type(self)(self.symbol, self.lhs.__{name}__(), self.rhs.__{name}__())
-            """
-        ))
-    del name
-
-    def __str__(self):
-        return f"{self.lhs} {self.symbol} {self.rhs}"
-
-
 @dataclass(frozen=True, slots=True, eq=False)
 class Var(Expr):
+    """
+    A variable.
+    """
     name: str
 
     def __str__(self):
         return self.name
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class Relation:
+    """
+    A comparison of two expressions.
+
+    Operations on relations apply to both sides. Comparisons
+    of relations not supported. Relations are not expressions.
+    """
+    symbol: str
+    lhs: Expr
+    rhs: Expr
+
+    # Dynamically generate all operators and relations:
+    for name, symbol in _BINOPS_SYMBOLS.items():
+        exec(dedent(
+            f"""
+            def __{name}__(self, other):
+                return type(self)(self.symbol, self.lhs {symbol} other, self.rhs {symbol} other)
+            def __r{name}__(self, other):
+                return type(self)(self.symbol, other {symbol} self.lhs, other {symbol} self.rhs)
+
+            __{name}__.__doc__ = __r{name}__.__doc__ = '''
+            Apply '{symbol}' to both sides of a relation.
+            '''
+            """
+        ))
+    for name, symbol in _UNOPS_SYMBOLS.items():
+        exec(dedent(
+            f"""
+            def __{name}__(self):
+                '''
+                Apply '{symbol}' to both sides of a relation.
+                '''
+                return type(self)(self.symbol, {symbol}self.lhs, {symbol}self.rhs)
+            """
+        ))
+    for name, symbol in _RELATION_SYMBOLS.items():
+        exec(dedent(
+            f"""
+            def __{name}__(self, other):
+                '''
+                Comparison with '{symbol}' not supported.
+                '''
+                raise NotImplementedError("Comparison with '{symbol}' not supported.")
+            """
+        ))
+    del name, symbol
+
+    def __str__(self):
+        return f"{self.lhs} {self.symbol} {self.rhs}"
