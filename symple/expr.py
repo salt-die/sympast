@@ -1,62 +1,124 @@
 """
-Expressions and relations defined here.
+Expressions and relations.
 """
 __all__ = "Expr", "UnOp", "BinOp", "Var", "Relation"
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from textwrap import dedent
-
-_BINOPS_SYMBOLS = {
-    "add": "+", "sub": "-", "mul": "*", "truediv": "/", "matmul": "@", "floordiv": "//",
-    "mod": "%", "pow": "**", "lshift": "<<", "rshift": ">>", "and": "&", "xor": "^", "or": "|",
-}
-_UNOPS_SYMBOLS = {"neg": "-", "pos": "+", "invert": "~"}
-_RELATION_SYMBOLS = {"lt": "<", "le": "<=", "eq": "==", "ne": "!=", "gt": ">", "ge": ">="}
+from numbers import Rational
+from typing import Self
 
 
-@dataclass(frozen=True, slots=True)
-class Expr:
+@dataclass(frozen=True, slots=True, init=False)
+class Expr(ABC):
     """
-    Abstract base for expressions.
+    Abstract base for arithemetic expressions.
     """
+    @abstractmethod
     def __init__(self):
-        raise NotImplementedError("Only subclasses of Expr should be instantiated.")
+        ...
 
-    # Dynamically generate all operators and relations:
-    for name, symbol in _BINOPS_SYMBOLS.items():
-        exec(dedent(
-            f"""
-            def __{name}__(self, other):
-                return BinOp("{symbol}", self, other)
-            def __r{name}__(self, other):
-                return BinOp("{symbol}", other, self)
+    def __add__(self, other: Self | Rational) -> "BinOp":
+        """
+        Add two expressions.
+        """
+        return BinOp("+", self, other)
 
-            __{name}__.__doc__ = __r{name}__.__doc__ = '''
-            Apply '{symbol}' to an expression.
-            '''
-            """
-        ))
-    for name, symbol in _UNOPS_SYMBOLS.items():
-        exec(dedent(
-            f"""
-            def __{name}__(self):
-                '''
-                Apply '{symbol}' to an expression.
-                '''
-                return UnOp("{symbol}", self)
-            """
-        ))
-    for name, symbol in _RELATION_SYMBOLS.items():
-        exec(dedent(
-            f"""
-            def __{name}__(self, other):
-                '''
-                Return the relation `self {symbol} other`.
-                '''
-                return Relation("{symbol}", self, other)
-            """
-        ))
-    del name, symbol
+    def __radd__(self, other: Self | Rational) -> "BinOp":
+        """
+        Add two expressions.
+        """
+        return BinOp("+", other, self)
+
+    def __sub__(self, other: Self | Rational) -> "BinOp":
+        """
+        Subtract two expressions.
+        """
+        return BinOp("-", self, other)
+
+    def __rsub__(self, other: Self | Rational) -> "BinOp":
+        """
+        Subtract two expressions.
+        """
+        return BinOp("-", other, self)
+
+    def __mul__(self, other: Self | Rational) -> "BinOp":
+        """
+        Multiply two expressions.
+        """
+        return BinOp("*", self, other)
+
+    def __rmul__(self, other: Self | Rational) -> "BinOp":
+        """
+        Multiply two expressions.
+        """
+        return BinOp("*", other, self)
+
+    def __truediv__(self, other: Self | Rational) -> "BinOp":
+        """
+        Divide two expressions.
+        """
+        return BinOp("/", self, other)
+
+    def __rtruediv__(self, other: Self | Rational) -> "BinOp":
+        """
+        Divide two expressions.
+        """
+        return BinOp("/", other, self)
+
+    def __pow__(self, other: Self | Rational) -> "BinOp":
+        """
+        Exponentiate two expressions.
+        """
+        return BinOp("**", self, other)
+
+    def __rpow__(self, other: Self | Rational) -> "BinOp":
+        """
+        Exponentiate two expressions.
+        """
+        return BinOp("**", other, self)
+
+    def __neg__(self) -> "UnOp":
+        """
+        Negate an expression.
+        """
+        return UnOp("-", self)
+
+    def __lt__(self, other: Self | Rational) -> "Relation":
+        """
+        Return the less-than relation between two expressions.
+        """
+        return Relation("<", self, other)
+
+    def __le__(self, other: Self | Rational) -> "Relation":
+        """
+        Return the less-than-or-equals relation between two expressions.
+        """
+        return Relation("<=", self, other)
+
+    def __eq__(self, other: Self | Rational) -> "Relation":
+        """
+        Return the equals relation between two expressions.
+        """
+        return Relation("==", self, other)
+
+    def __ne__(self, other: Self | Rational) -> "Relation":
+        """
+        Return the not-equals relation between two expressions.
+        """
+        return Relation("!=", self, other)
+
+    def __gt__(self, other: Self | Rational) -> "Relation":
+        """
+        Return the greater-than relation between two expressions.
+        """
+        return Relation(">", self, other)
+
+    def __ge__(self, other: Self | Rational) -> "Relation":
+        """
+        Return the greater-than-or-equals relation between two expressions.
+        """
+        return Relation(">=", self, other)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -67,7 +129,7 @@ class UnOp(Expr):
     symbol: str
     expr: Expr
 
-    def __str__(self):
+    def __str__(self) -> str:
         expr = f"({self.expr})" if isinstance(self.expr, BinOp) else f"{self.expr}"
         return f"{self.symbol}{expr}"
 
@@ -81,10 +143,10 @@ class BinOp(Expr):
     lhs: Expr
     rhs: Expr
 
-    def __str__(self):
+    def __str__(self) -> str:
         lhs = f"({self.lhs})" if isinstance(self.lhs, BinOp) else f"{self.lhs}"
         rhs = f"({self.rhs})" if isinstance(self.rhs, BinOp) else f"{self.rhs}"
-        return f"{lhs} {self.symbol} {rhs}"
+        return f"{lhs} {self.symbol} {self.rhs}"
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -94,57 +156,123 @@ class Var(Expr):
     """
     name: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
 @dataclass(frozen=True, slots=True, eq=False)
 class Relation:
     """
-    A comparison of two expressions.
+    A relation between two expressions or relations.
 
-    Operations on relations apply to both sides. Comparisons
+    Arithmetic operations on relations apply to both sides. Logical operations
+    on relations create compound relations (relation of relations). Comparisons
     of relations not supported. Relations are not expressions.
     """
     symbol: str
     lhs: Expr
     rhs: Expr
 
-    # Dynamically generate all operators and relations:
-    for name, symbol in _BINOPS_SYMBOLS.items():
-        exec(dedent(
-            f"""
-            def __{name}__(self, other):
-                return type(self)(self.symbol, self.lhs {symbol} other, self.rhs {symbol} other)
-            def __r{name}__(self, other):
-                return type(self)(self.symbol, other {symbol} self.lhs, other {symbol} self.rhs)
+    def __add__(self, other: Expr | Rational) -> "Relation":
+        """
+        Add to both sides of a relation.
+        """
+        return Relation(self.symbol, self.lhs + other, self.rhs + other)
 
-            __{name}__.__doc__ = __r{name}__.__doc__ = '''
-            Apply '{symbol}' to both sides of a relation.
-            '''
-            """
-        ))
-    for name, symbol in _UNOPS_SYMBOLS.items():
-        exec(dedent(
-            f"""
-            def __{name}__(self):
-                '''
-                Apply '{symbol}' to both sides of a relation.
-                '''
-                return type(self)(self.symbol, {symbol}self.lhs, {symbol}self.rhs)
-            """
-        ))
-    for name, symbol in _RELATION_SYMBOLS.items():
-        exec(dedent(
-            f"""
-            def __{name}__(self, other):
-                '''
-                Comparison with '{symbol}' not supported.
-                '''
-                raise NotImplementedError("Comparison with '{symbol}' not supported.")
-            """
-        ))
-    del name, symbol
+    def __radd__(self, other: Expr | Rational) -> "Relation":
+        """
+        Add to both sides of a relation.
+        """
+        return Relation(self.symbol, other + self.lhs, other + self.rhs)
 
-    def __str__(self):
-        return f"{self.lhs} {self.symbol} {self.rhs}"
+    def __sub__(self, other: Expr | Rational) -> "Relation":
+        """
+        Subtract from both sides of a relation.
+        """
+        return Relation(self.symbol, self.lhs - other, self.rhs - other)
+
+    def __rsub__(self, other: Expr | Rational) -> "Relation":
+        """
+        Subtract from both sides of a relation.
+        """
+        return Relation(self.symbol, other - self.lhs, other - self.rhs)
+
+    def __mul__(self, other: Expr | Rational) -> "Relation":
+        """
+        Multiply both sides of a relation.
+        """
+        return Relation(self.symbol, self.lhs * other, self.rhs * other)
+
+    def __rmul__(self, other: Expr | Rational) -> "Relation":
+        """
+        Multiply both sides of a relation.
+        """
+        return Relation(self.symbol, other * self.lhs, other * self.rhs)
+
+    def __truediv__(self, other: Expr | Rational) -> "Relation":
+        """
+        Divide both sides of a relation.
+        """
+        return Relation(self.symbol, self.lhs / other, self.rhs / other)
+
+    def __rtruediv__(self, other: Expr | Rational) -> "Relation":
+        """
+        Divide both sides of a relation.
+        """
+        return Relation(self.symbol, other / self.lhs, other / self.rhs)
+
+    def __pow__(self, other: Expr | Rational) -> "Relation":
+        """
+        Exponentiate both sides of a relation.
+        """
+        return Relation(self.symbol, self.lhs ** other, self.rhs ** other)
+
+    def __rpow__(self, other: Expr | Rational) -> "Relation":
+        """
+        Exponentiate both sides of a relation.
+        """
+        return Relation(self.symbol, other ** self.lhs, other ** self.rhs)
+
+    def __neg__(self) -> "Relation":
+        """
+        Negate both sides of a relation.
+        """
+        return Relation(self.symbol, -self.lhs, -self.rhs)
+
+    def __invert__(self) -> "Relation":
+        """
+        Invert the relation.
+        """
+        simple = {"<": ">=", "<=": ">", "==": "!=", "!=": "==", ">": "<=", ">=": "<"}
+        compound = {"&": "|", "|": "&"}
+        if self.symbol in simple:
+            return Relation(simple[self.symbol], self.lhs, self.rhs)
+        if self.symbol in compound:
+            return Relation(compound[self.symbol], ~self.lhs, ~self.rhs)
+        if self.symbol == "^":
+            return Relation("&", self.lhs, self.rhs) | Relation("&", ~self.lhs, ~self.rhs)
+
+        raise NotImplementedError(f"Can't invert symbol {self.symbol!r}")
+
+    def __or__(self, other: "Relation") -> "Relation":
+        """
+        Either relation.
+        """
+        return Relation("|", self, other)
+
+    def __and__(self, other: "Relation") -> "Relation":
+        """
+        Both relations.
+        """
+        return Relation("&", self, other)
+
+    def __xor__(self, other: "Relation") -> "Relation":
+        """
+        Either relation, but not both.
+        """
+        return Relation("^", self, other)
+
+    def __str__(self) -> str:
+        lhs = f"({self.lhs})" if isinstance(self.lhs, Relation) else f"{self.lhs}"
+        rhs = f"({self.rhs})" if isinstance(self.rhs, Relation) else f"{self.rhs}"
+        return f"{lhs} {self.symbol} {rhs}"
