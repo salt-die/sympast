@@ -146,7 +146,7 @@ class BinOp(Expr):
     def __str__(self) -> str:
         lhs = f"({self.lhs})" if isinstance(self.lhs, BinOp) else f"{self.lhs}"
         rhs = f"({self.rhs})" if isinstance(self.rhs, BinOp) else f"{self.rhs}"
-        return f"{lhs} {self.symbol} {self.rhs}"
+        return f"{lhs} {self.symbol} {rhs}"
 
 
 @dataclass(frozen=True, slots=True, eq=False)
