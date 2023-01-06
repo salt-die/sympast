@@ -43,18 +43,21 @@ def distribute(expr: Expr):
     if expr.symbol != "*":
         return expr
 
-    args = expr.args
-    for i, arg in enumerate(args, start=1):
+    for i, arg in enumerate(expr.args):
         if isinstance(arg, Expr) and arg.symbol == "+":
             break
     else:
         return expr
 
-    coef = i + 1 if i == 1 else i - 1
-    args = [arg for j, arg in enumerate(args, start=1) if j != i and j != coef]
-    distributed = Expr("+", *(expr[coef] * term for term in expr[i].args))
+    j = i + 1 if i == 0 else i - 1
+    args = [arg for k, arg in enumerate(expr.args) if k != i and k != j]
+
+    terms = arg.args
+    coef = expr.args[j]
+    distributed = Expr("+", *(coef * term for term in terms))
+
     if len(args) == 0:
         return distributed
 
-    args.insert(min(i, coef), distributed)
+    args.insert(min(i, j), distributed)
     return Expr("*", *args)
