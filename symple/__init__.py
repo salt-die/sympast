@@ -7,9 +7,9 @@ def solve(expr: Expr, value: Number):
     """
     Solve `expr == value` for some expression of a single variable.
     """
-    expr = collect(expr)
     match expr.symbol:
         case "+" | "*" as s:
+            expr = collect(expr)
             number = expr.args[-1]
             if not isinstance(number, Number):
                 return expr == value
