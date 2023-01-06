@@ -1,181 +1,171 @@
 """
 Expressions and relations.
 """
-__all__ = "Expr", "Operator", "Var", "Relation"
+__all__ = "Expr", "Relation"
 
-from abc import ABC, abstractmethod
+from numbers import Number
 from dataclasses import dataclass
-from numbers import Rational
 from typing import Self
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class Expr(ABC):
+@dataclass(frozen=True, slots=True, eq=False)
+class Expr:
     """
-    Abstract base for arithemetic expressions.
+    Abstract base for arithmetic expressions.
     """
-    @abstractmethod
-    def __init__(self):
-        ...
+    symbol: str
+    args: tuple[Self | Number]
 
-    def __add__(self, other: Self | Rational) -> "Operator":
+    def __init__(self, symbol, *args):
+        object.__setattr__(self, "symbol", symbol)
+        object.__setattr__(self, "args", args)
+
+    def __add__(self, other: Self | Number) -> Self:
         """
         Add two expressions.
         """
-        match self:
-            case Operator(symbol="+"):
-                return Operator("+", *self.args, other)
+        match self.symbol:
+            case "+":
+                return Expr("+", *self.args, other)
             case _:
-                return Operator("+", self, other)
+                return Expr("+", self, other)
 
-    def __radd__(self, other: Self | Rational) -> "Operator":
+    def __radd__(self, other: Self | Number) -> Self:
         """
         Add two expressions.
         """
-        match self:
-            case Operator(symbol="+"):
-                return Operator("+", other, *self.args)
+        match self.symbol:
+            case "+":
+                return Expr("+", other, *self.args)
             case _:
-                return Operator("+", other, self)
+                return Expr("+", other, self)
 
-    def __sub__(self, other: Self | Rational) -> "Operator":
+    def __sub__(self, other: Self | Number) -> Self:
         """
         Subtract two expressions.
         """
         return self + -other
 
-    def __rsub__(self, other: Self | Rational) -> "Operator":
+    def __rsub__(self, other: Self | Number) -> Self:
         """
         Subtract two expressions.
         """
         return other + -self
 
-    def __mul__(self, other: Self | Rational) -> "Operator":
+    def __mul__(self, other: Self | Number) -> Self:
         """
         Multiply two expressions.
         """
-        match self:
-            case Operator(symbol="*"):
-                return Operator("*", *self.args, other)
+        match self.symbol:
+            case "*":
+                return Expr("*", *self.args, other)
             case _:
-                return Operator("*", self, other)
+                return Expr("*", self, other)
 
-    def __rmul__(self, other: Self | Rational) -> "Operator":
+    def __rmul__(self, other: Self | Number) -> Self:
         """
         Multiply two expressions.
         """
-        match self:
-            case Operator(symbol="*"):
-                return Operator("*", other, *self.args)
+        match self.symbol:
+            case "*":
+                return Expr("*", other, *self.args)
             case _:
-                return Operator("*", other, self)
+                return Expr("*", other, self)
 
-    def __truediv__(self, other: Self | Rational) -> "Operator":
+    def __truediv__(self, other: Self | Number) -> Self:
         """
         Divide two expressions.
         """
         return self * other ** -1
 
-    def __rtruediv__(self, other: Self | Rational) -> "Operator":
+    def __rtruediv__(self, other: Self | Number) -> Self:
         """
         Divide two expressions.
         """
         return other * self ** -1
 
-    def __pow__(self, other: Self | Rational) -> "Operator":
+    def __pow__(self, other: Self | Number) -> Self:
         """
         Exponentiate two expressions.
         """
-        match self:
-            case Operator(symbol="**"):
+        match self.symbol:
+            case "**":
                 base, exp = self.args
-                return Operator("**", base, exp * other)
+                return Expr("**", base, exp * other)
             case _:
-                return Operator("**", self, other)
+                return Expr("**", self, other)
 
-    def __rpow__(self, other: Self | Rational) -> "Operator":
+    def __rpow__(self, other: Self | Number) -> Self:
         """
         Exponentiate two expressions.
         """
-        return Operator("**", other, self)
+        return Expr("**", other, self)
 
-    def __neg__(self) -> "Operator":
+    def __neg__(self) -> Self:
         """
         Negate an expression.
         """
-        match self:
-            case Operator(symbol="-"):
+        match self.symbol:
+            case "-":
                 return self.args[0]
             case _:
-                return Operator("-", self)
+                return Expr("-", self)
 
-    def __lt__(self, other: Self | Rational) -> "Relation":
+    def __lt__(self, other: Self | Number) -> "Relation":
         """
         Return the less-than relation between two expressions.
         """
         return Relation("<", self, other)
 
-    def __le__(self, other: Self | Rational) -> "Relation":
+    def __le__(self, other: Self | Number) -> "Relation":
         """
         Return the less-than-or-equals relation between two expressions.
         """
         return Relation("<=", self, other)
 
-    def __eq__(self, other: Self | Rational) -> "Relation":
+    def __eq__(self, other: Self | Number) -> "Relation":
         """
         Return the equals relation between two expressions.
         """
         return Relation("==", self, other)
 
-    def __ne__(self, other: Self | Rational) -> "Relation":
+    def __ne__(self, other: Self | Number) -> "Relation":
         """
         Return the not-equals relation between two expressions.
         """
         return Relation("!=", self, other)
 
-    def __gt__(self, other: Self | Rational) -> "Relation":
+    def __gt__(self, other: Self | Number) -> "Relation":
         """
         Return the greater-than relation between two expressions.
         """
         return Relation(">", self, other)
 
-    def __ge__(self, other: Self | Rational) -> "Relation":
+    def __ge__(self, other: Self | Number) -> "Relation":
         """
         Return the greater-than-or-equals relation between two expressions.
         """
         return Relation(">=", self, other)
 
-
-@dataclass(frozen=True, slots=True, eq=False)
-class Operator(Expr):
-    symbol: str
-    args: tuple[Expr]
-
-    def __init__(self, symbol: str, *args: Expr):
-        object.__setattr__(self, "symbol", symbol)
-        object.__setattr__(self, "args", args)
-
     def __str__(self) -> str:
-        def _nest_str(expr):
-            if isinstance(expr, Operator) and len(expr.args) > 1:
+        PRECEDENCE = {"+": 0, "*": 1, "-": 2, "**": 3}
+
+        def nest_str(expr):
+            if (
+                isinstance(expr, Expr) and
+                expr.symbol in PRECEDENCE and
+                PRECEDENCE[expr.symbol] < PRECEDENCE[self.symbol]
+            ):
                 return f"({expr})"
             return f"{expr}"
 
-        if len(self.args) == 1:
-            return f"{self.symbol}{_nest_str(self.args[0])}"
-
-        return f" {self.symbol} ".join(map(_nest_str, self.args))
-
-
-@dataclass(frozen=True, slots=True, eq=False)
-class Var(Expr):
-    """
-    A variable.
-    """
-    name: str
-
-    def __str__(self) -> str:
-        return self.name
+        match len(self.args):
+            case 0:
+                return self.symbol
+            case 1:
+                return f"{self.symbol}{nest_str(self.args[0])}"
+            case _:
+                return f" {self.symbol} ".join(map(nest_str, self.args))
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -191,61 +181,61 @@ class Relation:
     lhs: Expr
     rhs: Expr
 
-    def __add__(self, other: Expr | Rational) -> "Relation":
+    def __add__(self, other: Expr | Number) -> "Relation":
         """
         Add to both sides of a relation.
         """
         return Relation(self.symbol, self.lhs + other, self.rhs + other)
 
-    def __radd__(self, other: Expr | Rational) -> "Relation":
+    def __radd__(self, other: Expr | Number) -> "Relation":
         """
         Add to both sides of a relation.
         """
         return Relation(self.symbol, other + self.lhs, other + self.rhs)
 
-    def __sub__(self, other: Expr | Rational) -> "Relation":
+    def __sub__(self, other: Expr | Number) -> "Relation":
         """
         Subtract from both sides of a relation.
         """
         return Relation(self.symbol, self.lhs - other, self.rhs - other)
 
-    def __rsub__(self, other: Expr | Rational) -> "Relation":
+    def __rsub__(self, other: Expr | Number) -> "Relation":
         """
         Subtract from both sides of a relation.
         """
         return Relation(self.symbol, other - self.lhs, other - self.rhs)
 
-    def __mul__(self, other: Expr | Rational) -> "Relation":
+    def __mul__(self, other: Expr | Number) -> "Relation":
         """
         Multiply both sides of a relation.
         """
         return Relation(self.symbol, self.lhs * other, self.rhs * other)
 
-    def __rmul__(self, other: Expr | Rational) -> "Relation":
+    def __rmul__(self, other: Expr | Number) -> "Relation":
         """
         Multiply both sides of a relation.
         """
         return Relation(self.symbol, other * self.lhs, other * self.rhs)
 
-    def __truediv__(self, other: Expr | Rational) -> "Relation":
+    def __truediv__(self, other: Expr | Number) -> "Relation":
         """
         Divide both sides of a relation.
         """
         return Relation(self.symbol, self.lhs / other, self.rhs / other)
 
-    def __rtruediv__(self, other: Expr | Rational) -> "Relation":
+    def __rtruediv__(self, other: Expr | Number) -> "Relation":
         """
         Divide both sides of a relation.
         """
         return Relation(self.symbol, other / self.lhs, other / self.rhs)
 
-    def __pow__(self, other: Expr | Rational) -> "Relation":
+    def __pow__(self, other: Expr | Number) -> "Relation":
         """
         Exponentiate both sides of a relation.
         """
         return Relation(self.symbol, self.lhs ** other, self.rhs ** other)
 
-    def __rpow__(self, other: Expr | Rational) -> "Relation":
+    def __rpow__(self, other: Expr | Number) -> "Relation":
         """
         Exponentiate both sides of a relation.
         """
