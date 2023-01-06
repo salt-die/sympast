@@ -1,28 +1,24 @@
-from fractions import Fraction
-from numbers import Rational
+from numbers import Number
 
 from .expr import *
+from .transforms import *
 
-def solve(expr: Expr, value: Fraction=Fraction()):
+def solve(expr: Expr, value: Number):
     """
     Solve `expr == value` for some expression of a single variable.
     """
-    match expr:
-        case Var():
+    expr = collect(expr)
+    match expr.symbol:
+        case "+" | "*" as s:
+            number = expr.args[-1]
+            if not isinstance(number, Number):
+                return expr == value
+
+            result = value - number if s == "+" else value / number
+            if len(expr.args) == 2:
+                return solve(expr.args[0], result)
+            return Expr(s, expr.args[:-1]) == result
+        case "-":
+            return solve(expr.args[0], -value)
+        case _:
             return value
-        case Operator("+", Rational(), _):
-            return solve(expr.rhs, value - expr.lhs)
-        case Operator("+", _, Rational()):
-            return solve(expr.lhs, value - expr.rhs)
-        case Operator("-", Rational(), _):
-            return solve(expr.rhs, expr.lhs - value)
-        case Operator("-", _, Rational()):
-            return solve(expr.lhs, value + expr.rhs)
-        case Operator("*", Rational(), _):
-            return solve(expr.rhs, Fraction(value, expr.lhs))
-        case Operator("*", _, Rational()):
-            return solve(expr.lhs, Fraction(value, expr.rhs))
-        case Operator("/", Rational(), _):
-            return solve(expr.rhs, Fraction(expr.lhs, value))
-        case Operator("/", _, Rational()):
-            return solve(expr.lhs, expr.rhs * value)
