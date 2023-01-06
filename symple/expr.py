@@ -11,7 +11,7 @@ from typing import Self
 @dataclass(frozen=True, slots=True, eq=False)
 class Expr:
     """
-    Abstract base for arithmetic expressions.
+    Arithmetic expression.
     """
     symbol: str
     args: tuple[Self | Number]
