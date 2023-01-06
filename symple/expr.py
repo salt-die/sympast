@@ -1,7 +1,7 @@
 """
 Expressions and relations.
 """
-__all__ = "Expr", "UnOp", "BinOp", "Var", "Relation"
+__all__ = "Expr", "Operator", "Var", "Relation"
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -18,71 +18,96 @@ class Expr(ABC):
     def __init__(self):
         ...
 
-    def __add__(self, other: Self | Rational) -> "BinOp":
+    def __add__(self, other: Self | Rational) -> "Operator":
         """
         Add two expressions.
         """
-        return BinOp("+", self, other)
+        match self:
+            case Operator(symbol="+"):
+                return Operator("+", *self.args, other)
+            case _:
+                return Operator("+", self, other)
 
-    def __radd__(self, other: Self | Rational) -> "BinOp":
+    def __radd__(self, other: Self | Rational) -> "Operator":
         """
         Add two expressions.
         """
-        return BinOp("+", other, self)
+        match self:
+            case Operator(symbol="+"):
+                return Operator("+", other, *self.args)
+            case _:
+                return Operator("+", other, self)
 
-    def __sub__(self, other: Self | Rational) -> "BinOp":
+    def __sub__(self, other: Self | Rational) -> "Operator":
         """
         Subtract two expressions.
         """
-        return BinOp("-", self, other)
+        return self + -other
 
-    def __rsub__(self, other: Self | Rational) -> "BinOp":
+    def __rsub__(self, other: Self | Rational) -> "Operator":
         """
         Subtract two expressions.
         """
-        return BinOp("-", other, self)
+        return other + -self
 
-    def __mul__(self, other: Self | Rational) -> "BinOp":
+    def __mul__(self, other: Self | Rational) -> "Operator":
         """
         Multiply two expressions.
         """
-        return BinOp("*", self, other)
+        match self:
+            case Operator(symbol="*"):
+                return Operator("*", *self.args, other)
+            case _:
+                return Operator("*", self, other)
 
-    def __rmul__(self, other: Self | Rational) -> "BinOp":
+    def __rmul__(self, other: Self | Rational) -> "Operator":
         """
         Multiply two expressions.
         """
-        return BinOp("*", other, self)
+        match self:
+            case Operator(symbol="*"):
+                return Operator("*", other, *self.args)
+            case _:
+                return Operator("*", other, self)
 
-    def __truediv__(self, other: Self | Rational) -> "BinOp":
+    def __truediv__(self, other: Self | Rational) -> "Operator":
         """
         Divide two expressions.
         """
-        return BinOp("/", self, other)
+        return self * other ** -1
 
-    def __rtruediv__(self, other: Self | Rational) -> "BinOp":
+    def __rtruediv__(self, other: Self | Rational) -> "Operator":
         """
         Divide two expressions.
         """
-        return BinOp("/", other, self)
+        return other * self ** -1
 
-    def __pow__(self, other: Self | Rational) -> "BinOp":
+    def __pow__(self, other: Self | Rational) -> "Operator":
         """
         Exponentiate two expressions.
         """
-        return BinOp("**", self, other)
+        match self:
+            case Operator(symbol="**"):
+                base, exp = self.args
+                return Operator("**", base, exp * other)
+            case _:
+                return Operator("**", self, other)
 
-    def __rpow__(self, other: Self | Rational) -> "BinOp":
+    def __rpow__(self, other: Self | Rational) -> "Operator":
         """
         Exponentiate two expressions.
         """
-        return BinOp("**", other, self)
+        return Operator("**", other, self)
 
-    def __neg__(self) -> "UnOp":
+    def __neg__(self) -> "Operator":
         """
         Negate an expression.
         """
-        return UnOp("-", self)
+        match self:
+            case Operator(symbol="-"):
+                return self.args[0]
+            case _:
+                return Operator("-", self)
 
     def __lt__(self, other: Self | Rational) -> "Relation":
         """
@@ -122,31 +147,24 @@ class Expr(ABC):
 
 
 @dataclass(frozen=True, slots=True, eq=False)
-class UnOp(Expr):
-    """
-    An unary operation.
-    """
+class Operator(Expr):
     symbol: str
-    expr: Expr
+    args: tuple[Expr]
+
+    def __init__(self, symbol: str, *args: Expr):
+        object.__setattr__(self, "symbol", symbol)
+        object.__setattr__(self, "args", args)
 
     def __str__(self) -> str:
-        expr = f"({self.expr})" if isinstance(self.expr, BinOp) else f"{self.expr}"
-        return f"{self.symbol}{expr}"
+        def _nest_str(expr):
+            if isinstance(expr, Operator) and len(expr.args) > 1:
+                return f"({expr})"
+            return f"{expr}"
 
+        if len(self.args) == 1:
+            return f"{self.symbol}{_nest_str(self.args[0])}"
 
-@dataclass(frozen=True, slots=True, eq=False)
-class BinOp(Expr):
-    """
-    A binary operation.
-    """
-    symbol: str
-    lhs: Expr
-    rhs: Expr
-
-    def __str__(self) -> str:
-        lhs = f"({self.lhs})" if isinstance(self.lhs, BinOp) else f"{self.lhs}"
-        rhs = f"({self.rhs})" if isinstance(self.rhs, BinOp) else f"{self.rhs}"
-        return f"{lhs} {self.symbol} {rhs}"
+        return f" {self.symbol} ".join(map(_nest_str, self.args))
 
 
 @dataclass(frozen=True, slots=True, eq=False)

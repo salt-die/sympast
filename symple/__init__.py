@@ -10,19 +10,19 @@ def solve(expr: Expr, value: Fraction=Fraction()):
     match expr:
         case Var():
             return value
-        case BinOp("+", Rational(), _):
+        case Operator("+", Rational(), _):
             return solve(expr.rhs, value - expr.lhs)
-        case BinOp("+", _, Rational()):
+        case Operator("+", _, Rational()):
             return solve(expr.lhs, value - expr.rhs)
-        case BinOp("-", Rational(), _):
+        case Operator("-", Rational(), _):
             return solve(expr.rhs, expr.lhs - value)
-        case BinOp("-", _, Rational()):
+        case Operator("-", _, Rational()):
             return solve(expr.lhs, value + expr.rhs)
-        case BinOp("*", Rational(), _):
+        case Operator("*", Rational(), _):
             return solve(expr.rhs, Fraction(value, expr.lhs))
-        case BinOp("*", _, Rational()):
+        case Operator("*", _, Rational()):
             return solve(expr.lhs, Fraction(value, expr.rhs))
-        case BinOp("/", Rational(), _):
+        case Operator("/", Rational(), _):
             return solve(expr.rhs, Fraction(expr.lhs, value))
-        case BinOp("/", _, Rational()):
+        case Operator("/", _, Rational()):
             return solve(expr.lhs, expr.rhs * value)
