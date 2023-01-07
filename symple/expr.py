@@ -24,21 +24,68 @@ class Expr:
         """
         Add two expressions.
         """
-        match self.symbol:
-            case "+":
-                return Expr("+", *self.args, other)
-            case _:
-                return Expr("+", self, other)
+        if isinstance(other, Number) and other == 0:
+            return self
 
-    def __radd__(self, other: Self | Number) -> Self:
+        if self.symbol == "+":
+            # collect sum of numbers
+            if isinstance(other, Number) and isinstance(self.args[-1], Number):
+                term = self.args[-1] + other
+                if term == 0:
+                    if len(self.args) == 2:
+                        return self.args[0]
+                    return Expr("+", *self.args[:-1])
+                return Expr("+", *self.args[:-1], term)
+            return Expr("+", *self.args, other)
+        return Expr("+", self, other)
+
+    __radd__ = __add__
+
+    def __mul__(self, other: Self | Number) -> Self:
         """
-        Add two expressions.
+        Multiply two expressions.
         """
-        match self.symbol:
-            case "+":
-                return Expr("+", other, *self.args)
-            case _:
-                return Expr("+", other, self)
+        if isinstance(other, Number):
+            if other == 0:
+                return other
+            if other == 1:
+                return self
+
+        if self.symbol == "+":
+            return Expr("+", *(arg * other for arg in self.args))
+        if self.symbol == "*":
+            # collect product of numbers
+            if isinstance(other, Number):
+                if not isinstance(self.args[0], Number):
+                    return Expr("*", other, *self.args)
+                coef = self.args[0] * other
+                if coef == 1:
+                    if len(self.args) == 2:
+                        return self.args[1]
+                    return Expr("*", *self.args[1:])
+                return Expr("*", coef, *self.args[1:])
+            return Expr("*", *self.args, other)
+        return Expr("*", other, self)
+
+    __rmul__ = __mul__
+
+    def __pow__(self, other: Self | Number) -> Self:
+        """
+        Exponentiate two expressions.
+        """
+        if self.symbol == "**":
+            base, exp = self.args
+            new_exp = exp * other
+            if isinstance(new_exp, Number) and new_exp == 1:
+                return base
+            return Expr("**", base, new_exp)
+        return Expr("**", self, other)
+
+    def __rpow__(self, other: Self | Number) -> Self:
+        """
+        Exponentiate two expressions.
+        """
+        return Expr("**", other, self)
 
     def __sub__(self, other: Self | Number) -> Self:
         """
@@ -52,26 +99,6 @@ class Expr:
         """
         return other + -self
 
-    def __mul__(self, other: Self | Number) -> Self:
-        """
-        Multiply two expressions.
-        """
-        match self.symbol:
-            case "*":
-                return Expr("*", *self.args, other)
-            case _:
-                return Expr("*", self, other)
-
-    def __rmul__(self, other: Self | Number) -> Self:
-        """
-        Multiply two expressions.
-        """
-        match self.symbol:
-            case "*":
-                return Expr("*", other, *self.args)
-            case _:
-                return Expr("*", other, self)
-
     def __truediv__(self, other: Self | Number) -> Self:
         """
         Divide two expressions.
@@ -84,32 +111,11 @@ class Expr:
         """
         return other * self ** -1
 
-    def __pow__(self, other: Self | Number) -> Self:
-        """
-        Exponentiate two expressions.
-        """
-        match self.symbol:
-            case "**":
-                base, exp = self.args
-                return Expr("**", base, exp * other)
-            case _:
-                return Expr("**", self, other)
-
-    def __rpow__(self, other: Self | Number) -> Self:
-        """
-        Exponentiate two expressions.
-        """
-        return Expr("**", other, self)
-
     def __neg__(self) -> Self:
         """
         Negate an expression.
         """
-        match self.symbol:
-            case "-":
-                return self.args[0]
-            case _:
-                return Expr("-", self)
+        return -1 * self
 
     def __lt__(self, other: Self | Number) -> "Relation":
         """
