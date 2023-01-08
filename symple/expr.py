@@ -14,7 +14,7 @@ class Expr:
     Arithmetic expression.
     """
     symbol: str
-    args: tuple[Self | Number]
+    args: tuple[Self | Number, ...]
 
     def __init__(self, symbol, *args):
         object.__setattr__(self, "symbol", symbol)
