@@ -32,7 +32,7 @@ def symbols(s: str, *, type=int):
     type : Number, default: int
         Type for coefficients of the polynomial.
     """
-    return tuple(symbol(sym, type) for sym in s.replace(",", " ").split())
+    return tuple(symbol(sym, type=type) for sym in s.replace(",", " ").split())
 
 
 class Polynomial:
