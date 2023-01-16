@@ -1,26 +1,17 @@
 from numbers import Number
 
-from .expr import *
-from .transforms import *
+from .polynomial import *
 
-def solve(expr: Expr, value: Number):
+def solve(poly: Polynomial, value: Number):
     """
-    Solve `expr == value` for some expression of a single variable.
+    Solve the equation `poly == value` for a polynomial of a single variable.
     """
-    eq = expr == value
-    if expr.symbol == "+":
-        if not isinstance(expr.args[-1], Number):
-            return eq
-        eq -= expr.args[-1]
-    elif expr.symbol == "*":
-        if not isinstance(expr.args[0], Number):
-            return eq
-        eq /= expr.args[0]
-    elif expr.symbol == "**":
-        if not isinstance(expr.args[1], Number):
-            return eq
-        eq **= 1 / expr.args[1]
-    else:
-        return value
+    if len(poly.vars) > 1:
+        return ValueError("Can't solve polynomial of more than one variable.")
 
-    return solve(eq.lhs, eq.rhs)
+    if poly.deg == 1:
+        c, coef = poly.array
+        return (value - c) / coef
+
+    # TODO: Eigenvalues...
+    return NotImplemented
