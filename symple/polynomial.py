@@ -34,6 +34,16 @@ def symbols(s: str, *, type=int):
     """
     return tuple(symbol(sym, type=type) for sym in s.replace(",", " ").split())
 
+def _trim(arr: np.ndarray) -> np.ndarray:
+    """
+    Remove trailing zeros from a polynomial array.
+    """
+    n = len(arr.shape)
+    axes = [tuple(-1 if j == i else np.s_[:] for j in range(n)) for i in range(n)]
+    while not any(arr[axis].any() for axis in axes):
+        arr = arr[(np.s_[:-1],) * n]
+    return arr
+
 
 class Polynomial:
     """
@@ -45,7 +55,7 @@ class Polynomial:
         self.vars = vars
         if len(array.shape) != len(vars):
             raise ValueError("Array dimension doesn't match number of variables.")
-        self.array = array
+        self.array = _trim(array)
 
     def copy(self):
         """
@@ -155,7 +165,7 @@ class Polynomial:
         return f"{var}{str(power).translate(_SS)}"
 
     def __repr__(self):
-        return f"Polynomial(vars={self.vars}, array={self.array})"
+        return f"Polynomial(vars={self.vars!r}, array={self.array!r})"
 
     def _str_helper(self):
         for term in np.argwhere(self.array)[::-1]:
