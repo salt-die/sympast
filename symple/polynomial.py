@@ -1,5 +1,6 @@
 __all__ = "symbol", "symbols", "Polynomial"
 
+from math import prod
 from numbers import Number
 from typing import Self
 
@@ -38,15 +39,15 @@ def _trim(arr: np.ndarray) -> np.ndarray:
     """
     Remove trailing zeros from a polynomial array.
     """
-    n = len(arr.shape)
-    if n == 1:
+    nvars = len(arr.shape)
+    if nvars == 1:
         while arr[-1] == 0:
             arr = arr[:-1]
-        return arr
+    else:
+        axes = [tuple(-1 if i == j else np.s_[:] for i in range(nvars)) for j in range(nvars)]
+        while not any(arr[axis].any() for axis in axes):
+            arr = arr[(np.s_[:-1],) * nvars]
 
-    axes = [tuple(-1 if i == j else np.s_[:] for i in range(n)) for j in range(n)]
-    while not any(arr[axis].any() for axis in axes):
-        arr = arr[(np.s_[:-1],) * n]
     return arr
 
 
@@ -74,6 +75,13 @@ class Polynomial:
         Degree of polynomial.
         """
         return len(self.array) - 1
+
+    @property
+    def dtype(self) -> type:
+        """
+        Data type of coefficients.
+        """
+        return type(self.array.reshape(-1)[0])
 
     def _normalize(a: Self, b: Self) -> tuple[tuple[str, ...], np.ndarray, np.ndarray]:
         """
@@ -187,6 +195,31 @@ class Polynomial:
     def __str__(self):
         return " + ".join(self._str_helper())
 
-# TODO
-# derivative, integ
-# eval, solve
+    def eval(self, **values: Number) -> Self | Number:
+        """
+        Evaluate polynomial at some values.
+
+        Keyword arguments should be variable names, e.g., `(x ** 2 + y ** 3).eval(x=2, y=3)`.
+        """
+        for var in self.vars:
+            if var not in values:
+                values[var] = symbol(var, type=self.dtype)
+
+        return sum(
+            self.array[tuple(term)] * prod(values[var]**exp for var, exp in zip(self.vars, term))
+            for term in np.argwhere(self.array)
+        )
+
+    @property
+    def roots(self) -> tuple[Number, ...]:
+        """
+        Roots of the polynomial of a single variable.
+        """
+        if len(self.vars) > 1:
+            raise ValueError("Can't calculate roots of multivariate polynomials.")
+
+        if self.deg == 1:
+            c, coef = self.array
+            return (-c / coef,)
+
+        return tuple(np.polynomial.Polynomial(self.array).roots())
