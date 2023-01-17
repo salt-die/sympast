@@ -183,7 +183,7 @@ class Polynomial:
     def _str_helper(self):
         for term in np.argwhere(self.array)[::-1]:
             coef = self.array[tuple(term)]
-            power = ''.join(map(self._power_str, self.vars, term))
+            power = "".join(map(self._power_str, self.vars, term))
             if coef == 1:
                 if power:
                     yield power
