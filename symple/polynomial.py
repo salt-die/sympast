@@ -197,13 +197,11 @@ class Polynomial:
 
     def eval(self, **values: Number) -> Self | Number:
         """
-        Evaluate polynomial at some values.
+        Evaluate a polynomial at some values.
 
         Keyword arguments should be variable names, e.g., `(x ** 2 + y ** 3).eval(x=2, y=3)`.
         """
-        for var in self.vars:
-            if var not in values:
-                values[var] = symbol(var, type=self.dtype)
+        values.update({var: symbol(var, type=self.dtype)} for var in self.vars if var not in values)
 
         return sum(
             self.array[tuple(term)] * prod(values[var]**exp for var, exp in zip(self.vars, term))
@@ -213,7 +211,12 @@ class Polynomial:
     @property
     def roots(self) -> tuple[Number, ...]:
         """
-        Roots of the polynomial of a single variable.
+        Roots of the polynomial.
+
+        Raises
+        ------
+        ValueError
+            If polynomial has more than one variable.
         """
         if len(self.vars) > 1:
             raise ValueError("Can't calculate roots of multivariate polynomials.")
