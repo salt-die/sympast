@@ -40,14 +40,10 @@ def _trim(arr: np.ndarray) -> np.ndarray:
     Remove trailing zeros from a polynomial array.
     """
     nvars = len(arr.shape)
-    if nvars == 1:
-        while arr[-1] == 0:
-            arr = arr[:-1]
-    else:
-        axes = [tuple(-1 if i == j else np.s_[:] for i in range(nvars)) for j in range(nvars)]
-        while not any(arr[axis].any() for axis in axes):
-            arr = arr[(np.s_[:-1],) * nvars]
-
+    axes = tuple(tuple(np.s_[-(i == j):] for i in range(nvars)) for j in range(nvars))
+    trimmed = (np.s_[:-1],) * nvars
+    while not any(arr[axis].any() for axis in axes):
+        arr = arr[trimmed]
     return arr
 
 
