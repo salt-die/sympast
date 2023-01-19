@@ -201,7 +201,7 @@ class Polynomial:
 
         Keyword arguments should be variable names, e.g., `(x ** 2 + y ** 3).eval(x=2, y=3)`.
         """
-        values.update({var: symbol(var, type=self.dtype)} for var in self.vars if var not in values)
+        values.update({var: symbol(var, type=self.dtype) for var in self.vars if var not in values})
 
         return sum(
             self.array[tuple(term)] * prod(values[var]**exp for var, exp in zip(self.vars, term))
