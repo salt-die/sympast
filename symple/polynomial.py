@@ -35,16 +35,17 @@ def symbols(s: str, *, type=int):
     """
     return tuple(symbol(sym, type=type) for sym in s.replace(",", " ").split())
 
-def _trim(arr: np.ndarray) -> np.ndarray:
+def _trim(vars: tuple[str, ...], arr: np.ndarray) -> tuple[tuple[str, ...], np.ndarray]:
     """
-    Remove trailing zeros from a polynomial array.
+    Remove unused variables and trailing zeros from a polynomial array.
     """
-    nvars = len(arr.shape)
-    axes = tuple(tuple(np.s_[-(i == j):] for i in range(nvars)) for j in range(nvars))
-    trimmed = (np.s_[:-1],) * nvars
-    while not any(arr[axis].any() for axis in axes):
-        arr = arr[trimmed]
-    return arr
+    monos = np.argwhere(arr)
+    if len(monos) == 0:
+        return (), np.array(0)
+    max_exps = monos.max(axis=0)
+    used_vars = tuple(var for e, var in zip(max_exps, vars) if e)
+    axes = tuple(np.s_[:e + 1] for e in max_exps)
+    return used_vars, arr[axes].squeeze()
 
 
 class Polynomial:
@@ -54,14 +55,10 @@ class Polynomial:
     __slots__ = "vars", "array"
 
     def __init__(self, vars: tuple[str, ...], array: np.ndarray):
-        self.vars = vars
         if len(array.shape) != len(vars):
             raise ValueError("Array dimension doesn't match number of variables.")
 
-        if not array.any():
-            self.array = np.zeros((1,) * len(vars), array.dtype)
-        else:
-            self.array = _trim(array)
+        self.vars, self.array = _trim(vars, array)
 
     def copy(self) -> Self:
         """
@@ -74,7 +71,7 @@ class Polynomial:
         """
         Degree of polynomial.
         """
-        return len(self.array) - 1
+        return np.argwhere(self.array).sum(axis=1).max()
 
     @property
     def dtype(self) -> type:
@@ -87,18 +84,20 @@ class Polynomial:
         """
         Combine variables of two polynomials and make their arrays compatible.
         """
-        a_vars = set(a.vars)
-        b_vars = set(b.vars)
-        vars_ = tuple(sorted(a_vars | b_vars))
-        a_len, b_len = len(a.array), len(b.array)
+        vars_ = tuple(sorted(set(a.vars) | set(b.vars)))
 
-        a_axis = tuple(np.s_[:a_len] if symbol in a_vars else 0 for symbol in vars_)
-        a_normal = np.zeros((max(a_len, b_len),) * len(vars_), dtype=a.array.dtype)
-        a_normal[a_axis] = a.array
+        a_shape = dict(zip(a.vars, a.array.shape))
+        b_shape = dict(zip(b.vars, b.array.shape))
 
-        b_axis = tuple(np.s_[:b_len] if symbol in b_vars else 0 for symbol in vars_)
-        b_normal = np.zeros_like(a_normal)
-        b_normal[b_axis] = b.array
+        a_axes = tuple(np.s_[:a_shape[var]] if var in a_shape else 0 for var in vars_)
+        b_axes = tuple(np.s_[:b_shape[var]] if var in b_shape else 0 for var in vars_)
+
+        shape = tuple(max(a_shape.get(var, -1), b_shape.get(var, -1)) for var in vars_)
+        a_normal = np.zeros(shape, a.array.dtype)
+        b_normal = np.zeros(shape, b.array.dtype)
+
+        a_normal[a_axes] = a.array
+        b_normal[b_axes] = b.array
 
         return vars_, a_normal, b_normal
 
