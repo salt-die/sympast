@@ -57,11 +57,15 @@ class Polynomial:
         self.vars = vars
         if len(array.shape) != len(vars):
             raise ValueError("Array dimension doesn't match number of variables.")
-        self.array = _trim(array)
 
-    def copy(self):
+        if not array.any():
+            self.array = np.zeros((1,) * len(vars), array.dtype)
+        else:
+            self.array = _trim(array)
+
+    def copy(self) -> Self:
         """
-        Return a copy of a polynomial.
+        Return a copy.
         """
         return Polynomial(self.vars, self.array.copy())
 
@@ -132,21 +136,17 @@ class Polynomial:
 
     __rmul__ = __mul__
 
-    def __neg__(self):
+    def __neg__(self) -> Self:
         return -1 * self
 
-    def __truediv__(self, other: Number):
+    def __truediv__(self, other: Number) -> Self:
         # TODO: Implement rational polynomials
         if isinstance(other, Number):
             return Polynomial(self.vars, self.array / other)
 
         return NotImplemented
 
-    def __rtruediv__(self, other: Number):
-        # TODO: Implement rational polynomials
-        return NotImplemented
-
-    def __pow__(self, other: int):
+    def __pow__(self, other: int) -> Self:
         if not isinstance(other, int):
             return NotImplemented
 
@@ -165,7 +165,7 @@ class Polynomial:
 
         return (self * self) ** (other // 2)
 
-    def _power_str(self, var, power):
+    def _power_str(self, var, power) -> str:
         if power == 0:
             return ""
         if power == 1:
@@ -173,7 +173,7 @@ class Polynomial:
 
         return f"{var}{str(power).translate(_SS)}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Polynomial(vars={self.vars!r}, array={self.array!r})"
 
     def _str_helper(self):
@@ -188,8 +188,8 @@ class Polynomial:
             else:
                 yield f"{coef}{power}"
 
-    def __str__(self):
-        return " + ".join(self._str_helper())
+    def __str__(self) -> str:
+        return " + ".join(self._str_helper()) or "0"
 
     def eval(self, **values: Number) -> Self | Number:
         """
