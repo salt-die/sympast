@@ -41,13 +41,12 @@ def factor_monomial(poly: Polynomial) -> tuple[Polynomial, Polynomial]:
     Return (m, poly / m) for some monomial m of highest degree that divides poly.
     """
     cont = content(poly)
-    nvars = len(poly.vars)
     exps = tuple(np.argwhere(poly.array).min(axis=0))
 
     mono = np.zeros_like(poly.array)
     mono[exps] = cont
 
     deflated = np.zeros_like(poly.array)
-    deflated[tuple(np.s_[:nvars - e] for e in exps)] = poly.array[tuple(np.s_[e:] for e in exps)]
+    deflated[tuple(np.s_[:s - e] for s, e in zip(deflated.shape, exps))] = poly.array[tuple(np.s_[e:] for e in exps)]
 
     return Polynomial(poly.vars, mono), Polynomial(poly.vars, deflated // cont)
