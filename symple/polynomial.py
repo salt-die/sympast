@@ -196,12 +196,13 @@ class Polynomial:
 
         Keyword arguments should be variable names, e.g., `(x ** 2 + y ** 3).eval(x=2, y=3)`.
         """
-        values.update((var, symbol(var, type=self.dtype)) for var in self.vars if var not in values)
-
-        return sum(
-            self.array[tuple(term)] * prod(values[var]**exp for var, exp in zip(self.vars, term))
-            for term in np.argwhere(self.array)
-        )
+        powers = (values.get(var, 1) ** np.arange(s) for var, s in zip(self.vars, self.array.shape))
+        products = self.array * np.array(np.meshgrid(*powers, indexing="ij")).prod(axis=0)
+        vars = tuple(var for var in self.vars if var not in values)
+        if not vars:
+            return products.sum()
+        sum_indices = tuple(i for i, var in enumerate(self.vars) if var in values)
+        return Polynomial(vars, products.sum(axis=sum_indices))
 
     @property
     def roots(self) -> tuple[Number, ...]:
