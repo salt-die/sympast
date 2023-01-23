@@ -9,7 +9,7 @@ from scipy.signal import convolve
 
 _SS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 
-def symbol(s: str, *, type=int):
+def symbol(s: str, *, dtype=int):
     """
     Create a symbol.
 
@@ -20,9 +20,9 @@ def symbol(s: str, *, type=int):
     type : Number, default: int
         Type for coefficients of the polynomial.
     """
-    return Polynomial((s,), np.array([type(), type() + 1]))
+    return Polynomial((s,), np.array([dtype(), dtype() + 1]))
 
-def symbols(s: str, *, type=int):
+def symbols(s: str, *, dtype=int):
     """
     Create symbols from a space- or comma-delimited string.
 
@@ -33,7 +33,7 @@ def symbols(s: str, *, type=int):
     type : Number, default: int
         Type for coefficients of the polynomial.
     """
-    return tuple(symbol(sym, type=type) for sym in s.replace(",", " ").split())
+    return tuple(symbol(sym, dtype=dtype) for sym in s.replace(",", " ").split())
 
 def _trim(vars: tuple[str, ...], arr: np.ndarray) -> tuple[tuple[str, ...], np.ndarray]:
     """
@@ -45,7 +45,7 @@ def _trim(vars: tuple[str, ...], arr: np.ndarray) -> tuple[tuple[str, ...], np.n
     max_exps = monos.max(axis=0)
     used_vars = tuple(var for e, var in zip(max_exps, vars) if e)
     axes = tuple(np.s_[:e + 1] for e in max_exps)
-    return used_vars, arr[axes].squeeze()
+    return used_vars, np.array(arr[axes].squeeze())
 
 
 class Polynomial:
@@ -71,7 +71,10 @@ class Polynomial:
         """
         Degree of polynomial.
         """
-        return np.argwhere(self.array).sum(axis=1).max()
+        where = np.argwhere(self.array)
+        if len(where) == 0:
+            return 0
+        return where.sum(axis=1).max()
 
     @property
     def dtype(self) -> type:
@@ -103,7 +106,7 @@ class Polynomial:
 
     def __add__(self, other: Number | Self) -> Self:
         if isinstance(other, Number):
-            array = self.array + type(other)()  # Re=cast array to be compatible with number type.
+            array = np.array(self.array + type(other)())  # Re=cast array to be compatible with number type.
             array.reshape(-1)[0] += other
             return Polynomial(self.vars, array)
 
