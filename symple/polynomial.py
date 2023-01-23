@@ -55,7 +55,7 @@ class Polynomial:
     __slots__ = "vars", "array"
 
     def __init__(self, vars: tuple[str, ...], array: np.ndarray):
-        if len(array.shape) != len(vars):
+        if array.ndim != len(vars):
             raise ValueError("Array dimension doesn't match number of variables.")
 
         self.vars, self.array = _trim(vars, array)
